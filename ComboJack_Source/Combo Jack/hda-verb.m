@@ -350,7 +350,7 @@ static uint32_t unplugged()
             WRITE_COEFEX(0x57, 0x03, 0x8aa6); /* Direct Drive HP Amp control */
             //WRITE_COEF(0x46, 0xd089);
             break;
-        case 0x10ec0299:
+        case 0x10ec0295:
             alc225_pre_hsmode();
             UPDATE_COEF(0x63, 3<<14, 0);
             break;
@@ -389,6 +389,7 @@ static uint32_t headphones()
             break;
         case 0x10ec0295:
             alc225_pre_hsmode();
+            VerbCommand(HDA_VERB(0x19, AC_VERB_SET_PIN_WIDGET_CONTROL, 0x20));
             UPDATE_COEF(0x45, 0x3f<<10, 0x30<<10);
             UPDATE_COEF(0x45, 0x3f<<10, 0x31<<10);
             UPDATE_COEF(0x49, 3<<8, 0<<8);
@@ -592,7 +593,7 @@ static uint32_t headsetcheck()
             alc225_pre_hsmode();
             UPDATE_COEF(0x67, 0xf000, 0x1000); //Headset output enable
             UPDATE_COEF(0x45, 0x3f<<10, 0x34<<10); //Headset output enable
-            VerbCommand(HDA_VERB(0x18, AC_VERB_SET_PIN_WIDGET_CONTROL, 0x24)); // 0x24 corresponds to IN (0x20) + VREF 80 (0x04)
+            VerbCommand(HDA_VERB(0x19, AC_VERB_SET_PIN_WIDGET_CONTROL, 0x24)); // 0x24 corresponds to IN (0x20) + VREF 80 (0x04)
             UPDATE_COEF(0x45, 0x3f<<10, 0x34<<10); //Check Type
             UPDATE_COEF(0x49, 3<<8, 2<<8); //Check Type
             usleep(350000);
