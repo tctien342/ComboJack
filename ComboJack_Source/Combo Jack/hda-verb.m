@@ -788,6 +788,10 @@ void alcInit()
             WRITE_COEF(0x46, 0x0004);
             WRITE_COEF(0x1b, 0x0c4b);
             break;
+        case 0x10ec0295:
+            WRITE_COEFEX(0x4a, 0x8000, 1 << 15);
+            WRITE_COEFEX(0x4a, 0x8000, 0 << 15);
+            goto ALC255_COMMON;
         case 0x10ec0255:
         ALC255_COMMON:
             VerbCommand(HDA_VERB(0x19, AC_VERB_SET_PIN_WIDGET_CONTROL, 0x24));
