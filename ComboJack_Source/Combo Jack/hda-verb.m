@@ -641,19 +641,24 @@ static uint32_t headsetcheck()
 
 void JackBehavior()
 {
-    int nid, verb, param;
-    nid = REALTEK_HP_OUT;
-    verb = AC_VERB_GET_PIN_SENSE;
-    param = 0x00;
+    int counter = 4;
     
-    while(run && ((VerbCommand(HDA_VERB(nid, verb, param)) & 0x80000000) == 0x80000000)) // Poll headphone jack state
+    while (run) // Poll headphone jack state
     {
-        sleep(1); // Polling frequency (seconds): use usleep for microseconds if finer-grained control is needed
+        usleep(250*1000); // Polling frequency (seconds): use usleep for microseconds if finer-grained control is needed
         if (awake)
         {
             awake = false;
             break;
         }
+        
+        if ((GETJACKSTATUS() & 0x80000000) != 0x80000000)
+        {
+            if (--counter < 0)
+                break;
+        }
+        else
+            counter = 4;
     }
     if (run) // If process is killed, maintain current state
     {
@@ -668,43 +673,44 @@ void JackBehavior()
 
 uint32_t CFPopUpMenu()
 {
-    CFOptionFlags responsecode;
+    CFOptionFlags responsecode = kCFUserNotificationOtherResponse;
     
-    while(true)
-    {
-        //wait until user logged in
-        stat("/dev/console", &consoleinfo);
-        if (!consoleinfo.st_uid)
-        {
-            sleep(1);
-            continue;
-        }
-        else if ((GETJACKSTATUS() & 0x80000000) != 0x80000000)
-            return unplugged();
-        if (awake) awake = false;
-        //get current locale settings
-        NSString *locale = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleLocale"];
-        //load localized strings
-        NSDictionary* CurDict = [l10nDict objectForKey:locale];
-        NSMutableDictionary* Merged = dlgText.mutableCopy;
-        [Merged addEntriesFromDictionary: CurDict];
-        //display dialog
-        CFUserNotificationDisplayAlert(
-                0, // CFTimeInterval timeout
-                kCFUserNotificationNoteAlertLevel, // CFOptionFlags flags
-                iconUrl, // CFURLRef iconURL (file location URL)
-                NULL, // CFURLRef soundURL (unused)
-                NULL, // CFURLRef localizationURL
-                GET_CFSTR_FROM_DICT(Merged, @"dialogTitle"), //CFStringRef alertHeader
-                GET_CFSTR_FROM_DICT(Merged, @"dialogMsg"), //CFStringRef alertMessage
-                GET_CFSTR_FROM_DICT(Merged, @"btnHeadphone"), //CFStringRef defaultButtonTitle
-                NULL, // GET_CFSTR_FROM_DICT(Merged, @"btnLinein"), //CFStringRef alternateButtonTitle
-                //GET_CFSTR_FROM_DICT(Merged, @"btnCancel"), //CFStringRef alternateButtonTitle
-                GET_CFSTR_FROM_DICT(Merged, @"btnHeadset"), //CFStringRef otherButtonTitle
-                &responsecode // CFOptionFlags *responseFlags
-        );
-        break;
-    }
+//    while (true)
+//    {
+//        //wait until user logged in
+//        stat("/dev/console", &consoleinfo);
+//        if (!consoleinfo.st_uid)
+//        {
+//            sleep(1);
+//            continue;
+//        }
+//        else if ((GETJACKSTATUS() & 0x80000000) != 0x80000000)
+//            return unplugged();
+//        
+//        if (awake) awake = false;
+//        //get current locale settings
+//        NSString *locale = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleLocale"];
+//        //load localized strings
+//        NSDictionary* CurDict = [l10nDict objectForKey:locale];
+//        NSMutableDictionary* Merged = dlgText.mutableCopy;
+//        [Merged addEntriesFromDictionary: CurDict];
+//        //display dialog
+//        CFUserNotificationDisplayAlert(
+//                0, // CFTimeInterval timeout
+//                kCFUserNotificationNoteAlertLevel, // CFOptionFlags flags
+//                iconUrl, // CFURLRef iconURL (file location URL)
+//                NULL, // CFURLRef soundURL (unused)
+//                NULL, // CFURLRef localizationURL
+//                GET_CFSTR_FROM_DICT(Merged, @"dialogTitle"), //CFStringRef alertHeader
+//                GET_CFSTR_FROM_DICT(Merged, @"dialogMsg"), //CFStringRef alertMessage
+//                GET_CFSTR_FROM_DICT(Merged, @"btnHeadphone"), //CFStringRef defaultButtonTitle
+//                NULL, // GET_CFSTR_FROM_DICT(Merged, @"btnLinein"), //CFStringRef alternateButtonTitle
+//                //GET_CFSTR_FROM_DICT(Merged, @"btnCancel"), //CFStringRef alternateButtonTitle
+//                GET_CFSTR_FROM_DICT(Merged, @"btnHeadset"), //CFStringRef otherButtonTitle
+//                &responsecode // CFOptionFlags *responseFlags
+//        );
+//        break;
+//    }
     
     if ((GETJACKSTATUS() & 0x80000000) != 0x80000000)
         return unplugged();
@@ -995,17 +1001,21 @@ int main()
 //    fprintf(stderr, "Verb Command = 0x%x\n", val.verb);
 //  val.res = VerbCommand(val.verb);
 //  fprintf(stderr, "Response = 0x%x\n", val.res);
+    int counter = 4;
 
-    while(run) // Poll headphone jack state
+    while (run) // Poll headphone jack state
     {
         jackstat = GETJACKSTATUS();
         if (jackstat == -1) // 0xFFFFFFFF means jack not ready yet
         {
             fprintf(stderr, "Jack not ready. Checking again in 1 second...\n");
+            counter = 4;
         }
         else if ((jackstat & 0x80000000) == 0x80000000)
         {
+            if (--counter < 0)
             {
+                counter = 4;
                 fprintf(stderr, "Jack sense detected! Displaying menu...\n");
                 if (CFPopUpMenu() == 0)
                 {
@@ -1017,8 +1027,11 @@ int main()
                 }
             }
         }
+        else
+            counter = 4;
+        
         //if (awake) awake = false;
-        sleep(1); // Sleep delay (seconds): use usleep for microseconds if fine-grained control is needed
+        usleep(250*1000); // Sleep delay (seconds): use usleep for microseconds if fine-grained control is needed
     }
 
     // All done here, clean up and exit safely
